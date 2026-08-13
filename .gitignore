@@ -19,8 +19,8 @@ __pycache__/
 *$py.class
 
 # Virtual environments (adjust names if you use different ones)
+jupyter_env/
 .venv/
-jupyter_venv/
 env/
 ENV/
 .env
