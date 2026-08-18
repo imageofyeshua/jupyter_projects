@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Gemini Live Subtitles</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #121212;
+      color: #fff;
+      padding: 20px;
+    }
+
+    .subtitle-block {
+      background: #1e1e1e;
+      padding: 12px;
+      margin-bottom: 10px;
+      border-radius: 6px;
+    }
+
+    .en {
+      color: #88c0d0;
+      font-size: 1.1rem;
+    }
+
+    .ko {
+      color: #a3be8c;
+      font-weight: bold;
+      font-size: 1.2rem;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+
+<body>
+  <h2>Gemini Audio Translation</h2>
+  <button id="recordBtn" onclick="toggleRecording()">Start Recording</button>
+  <div id="subtitles" style="margin-top:20px;"></div>
+
+  <script>
+    let ws = new WebSocket("ws://localhost:8000/ws");
+    let mediaRecorder;
+    let isRecording = false;
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (!data.english) return;
+
+      const block = document.createElement("div");
+      block.className = "subtitle-block";
+      block.innerHTML = `<div class="en">${data.english}</div><div class="ko">${data.korean}</div>`;
+
+      const container = document.getElementById("subtitles");
+      container.insertBefore(block, container.firstChild);
+    };
+
+    async function toggleRecording() {
+      const btn = document.getElementById("recordBtn");
+      if (!isRecording) {
+        const stream = await navigator.mediaDevices.getUserMedia({audio: true});
+        mediaRecorder = new MediaRecorder(stream, {mimeType: 'audio/webm'});
+
+        mediaRecorder.ondataavailable = async (e) => {
+          if (e.data.size > 0 && ws.readyState === WebSocket.OPEN) {
+            const buffer = await e.data.arrayBuffer();
+            // Convert webm to base64 string
+            const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+            ws.send(base64);
+          }
+        };
+
+        // Emit audio slice every 4000ms
+        mediaRecorder.start(4000);
+        isRecording = true;
+        btn.innerText = "Stop Recording";
+      } else {
+        mediaRecorder.stop();
+        isRecording = false;
+        btn.innerText = "Start Recording";
+      }
+    }
+  </script>
+</body>
+
+</html>
